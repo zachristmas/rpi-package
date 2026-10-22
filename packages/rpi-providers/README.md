@@ -142,6 +142,11 @@ off / minimal / low 对应 low，medium / high / xhigh 对应 high，max 对应 
 [思考模式](https://docs.z.ai/guides/capabilities/thinking-mode.md)、
 [Coding Plan 快速开始](https://docs.z.ai/devpack/quick-start.md)。
 
+思考强度选择器（`/thinking`、Shift+Tab、`/settings`）只列出对服务端有实际区别的档位：GLM-5.3 系列为
+low / high / max（不可关闭，所以没有 off）；GLM-5.2 为 off / high / max；GLM-5 Turbo 与 GLM-4.7 为 off / high。
+宿主默认的 medium 会向下取到最近的可用档位（GLM-5.3 为 low），需要 high 时在 `.rpi/settings.json`
+设置 `defaultThinkingLevel`。
+
 未用真实 key 验证：认证头（按 Bearer 处理）、`tool_stream` 的流式工具参数解析、思考 token 是否计入
 `max_tokens`（按计入处理，只会提高请求上限）。
 

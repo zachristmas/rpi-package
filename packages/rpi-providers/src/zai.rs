@@ -101,12 +101,12 @@ fn spec(id: &str) -> Option<&'static Spec> {
     SPECS.iter().find(|spec| spec.id == id)
 }
 
-fn compatibility() -> OpenaiCompletionsCompat {
+fn compatibility(supports_effort: bool) -> OpenaiCompletionsCompat {
     OpenaiCompletionsCompat {
         supports_store: Some(false),
         supports_developer_role: Some(false),
         supports_strict_mode: Some(false),
-        supports_reasoning_effort: Some(true),
+        supports_reasoning_effort: Some(supports_effort),
         // Tool turns must return the unmodified `reasoning_content`.
         requires_reasoning_content: Some(true),
         // Z.ai does not document whether hidden reasoning counts toward
@@ -117,6 +117,28 @@ fn compatibility() -> OpenaiCompletionsCompat {
         max_tokens_field: Some(MaxTokensField::MaxTokens),
         ..Default::default()
     }
+}
+
+/// The thinking levels the selector (`/thinking`, Shift+Tab) offers for a
+/// model. `None` hides a level; absent entries stay available. Only levels
+/// that change what the server does are listed, so GLM-5.3 shows low / high /
+/// max and no "off", and the models that only switch thinking on or off show
+/// off / high.
+fn level_map(spec: &Spec) -> BTreeMap<ThinkingLevel, Option<String>> {
+    use ThinkingLevel::*;
+    let has = |effort: &str| spec.efforts.iter().any(|candidate| *candidate == effort);
+    let mut map = BTreeMap::from([(Minimal, None), (Medium, None)]);
+    if !spec.toggle {
+        map.insert(Off, None);
+    }
+    map.insert(Low, has("low").then(|| "low".to_string()));
+    // Toggle-only models still need one "on" level, which reads as high.
+    map.insert(High, Some("high".to_string()));
+    map.insert(Xhigh, None);
+    if has("max") {
+        map.insert(Max, Some("max".to_string()));
+    }
+    map
 }
 
 pub fn models() -> Vec<Model> {
@@ -138,11 +160,10 @@ pub fn models() -> Vec<Model> {
             // The visible answer's allowance; the server accepts up to 128K.
             // This is a per-request default, not the maximum.
             model.max_tokens = 16_384;
-            model.thinking_level_map = Some(BTreeMap::from([
-                (ThinkingLevel::Xhigh, Some("high".into())),
-                (ThinkingLevel::Max, Some("max".into())),
-            ]));
-            model.compat = Some(StreamingProtocolCompat::OpenaiCompletions(compatibility()));
+            model.thinking_level_map = Some(level_map(spec));
+            model.compat = Some(StreamingProtocolCompat::OpenaiCompletions(compatibility(
+                !spec.efforts.is_empty(),
+            )));
             // The Coding Plan bills in plan credits, not per token, so no cost
             // rates are declared. Users can add estimates in models.json.
             model
@@ -228,7 +249,7 @@ impl Provider for ZaiProvider {
         }
         let compat = model
             .compat
-            .get_or_insert_with(|| StreamingProtocolCompat::OpenaiCompletions(compatibility()));
+            .get_or_insert_with(|| StreamingProtocolCompat::OpenaiCompletions(compatibility(true)));
         if let StreamingProtocolCompat::OpenaiCompletions(compat) = compat {
             compat.requires_reasoning_content = Some(true);
         }
@@ -292,6 +313,28 @@ mod tests {
             assert_eq!(thinking["type"], "enabled");
             assert_eq!(thinking["clear_thinking"], false);
             assert_eq!(got, Some(effort));
+        }
+    }
+
+    #[test]
+    fn selector_offers_only_levels_that_change_the_request() {
+        use ThinkingLevel::*;
+        let levels = |id: &str| {
+            models()
+                .into_iter()
+                .find(|model| model.id == id)
+                .unwrap()
+                .supported_thinking_levels()
+        };
+        // Forced thinking: no off, three real efforts.
+        for id in ["glm-5.3", "glm-5.3-highspeed", "glm-5.3-flash"] {
+            assert_eq!(levels(id), [Low, High, Max]);
+        }
+        // Switchable thinking with high / max efforts.
+        assert_eq!(levels("glm-5.2"), [Off, High, Max]);
+        // Switchable thinking with no effort parameter.
+        for id in ["glm-5-turbo", "glm-4.7"] {
+            assert_eq!(levels(id), [Off, High]);
         }
     }
 
