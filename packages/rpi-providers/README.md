@@ -1,6 +1,6 @@
 # rpi-providers
 
-一个可安装的原生扩展包，统一维护 DeepSeek、OpenRouter、llama.cpp、Proxy 和 Z.ai（国际与国内两个套餐）。
+一个可安装的原生扩展包，统一维护 DeepSeek、OpenRouter、llama.cpp、Proxy 和 Z.ai。
 只有一个 Cargo package、一个动态库和一个插件入口；供应商实现分别放在模块中。
 核心继续保留 OpenAI / Anthropic 通用协议，CLI 不依赖供应商包。
 
@@ -11,7 +11,6 @@
 | `llama-cpp` | `local` | 可匿名，可选 `LLAMA_CPP_API_KEY` |
 | `proxy` | `default` | 可匿名，可选 `PROXY_API_KEY` |
 | `zai` | `glm-5.3` 等 7 个 Coding Plan 模型 | 必须认证，`ZAI_API_KEY` |
-| `zai-coding-cn` | `glm-5.3` 等 4 个国内 Coding Plan 模型 | 必须认证，`ZAI_CODING_CN_API_KEY` |
 
 包名 `rpi-providers` 与 provider ID 不同。一次安装注册四份目录，认证仍按 provider ID
 隔离，不能借用 `OPENAI_API_KEY` 或其他供应商的 key。已有 models.json、auth.json 的
@@ -142,14 +141,6 @@ off / minimal / low 对应 low，medium / high / xhigh 对应 high，max 对应 
 `reasoning_content`。依据 [GLM-5.3](https://docs.z.ai/guides/llm/glm-5.3.md)、
 [思考模式](https://docs.z.ai/guides/capabilities/thinking-mode.md)、
 [Coding Plan 快速开始](https://docs.z.ai/devpack/quick-start.md)。
-
-### 国内套餐 `zai-coding-cn`
-
-国内（智谱，open.bigmodel.cn）与国际（z.ai）是两个独立平台：key 不通用，端点也不同。把国内套餐的 key
-用在 `api.z.ai` 上会返回 1113（Insufficient balance or no resource package）。国内套餐使用
-`https://open.bigmodel.cn/api/coding/paas/v4` 与 `ZAI_CODING_CN_API_KEY`，目录来自 models.dev
-`zhipuai-coding-plan`：`glm-5.3`、`glm-5.3-highspeed`、`glm-5.3-flash`，以及已弃用的 `glm-4.6v`
-（128K 上下文、图片输入、可关闭思考、无 effort）。请求形态与国际版相同。
 
 未用真实 key 验证：认证头（按 Bearer 处理）、`tool_stream` 的流式工具参数解析、思考 token 是否计入
 `max_tokens`（按计入处理，只会提高请求上限）。
