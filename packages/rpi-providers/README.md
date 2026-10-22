@@ -1,6 +1,6 @@
 # rpi-providers
 
-一个可安装的原生扩展包，统一维护 DeepSeek、OpenRouter、llama.cpp 和 Proxy。
+一个可安装的原生扩展包，统一维护 DeepSeek、OpenRouter、llama.cpp、Proxy 和 Z.ai。
 只有一个 Cargo package、一个动态库和一个插件入口；供应商实现分别放在模块中。
 核心继续保留 OpenAI / Anthropic 通用协议，CLI 不依赖供应商包。
 
@@ -10,6 +10,7 @@
 | `openrouter` | `openrouter/auto` | 必须认证，`OPENROUTER_API_KEY` |
 | `llama-cpp` | `local` | 可匿名，可选 `LLAMA_CPP_API_KEY` |
 | `proxy` | `default` | 可匿名，可选 `PROXY_API_KEY` |
+| `zai` | `glm-5.3`、`glm-5.3-flash` | 必须认证，`ZAI_API_KEY` |
 
 包名 `rpi-providers` 与 provider ID 不同。一次安装注册四份目录，认证仍按 provider ID
 隔离，不能借用 `OPENAI_API_KEY` 或其他供应商的 key。已有 models.json、auth.json 的
@@ -115,6 +116,26 @@ medium / high / xhigh 映射 high，max 映射 max。遵循宿主 options 约定
 
 用户端点和请求头由宿主私有执行绑定提供，本包不读取进程 key 或改回固定运行时端点。
 涉及包的 `/reload` 会重新绑定；移除当前包时保留旧会话并报错，先切换模型再卸载。
+
+## Z.ai GLM Coding Plan 行为
+
+端点为 `https://api.z.ai/api/coding/paas/v4`（Chat Completions）。通用 API 使用 `/api/paas/v4`，
+不消耗套餐额度；套餐 key 与通用 API key 相互独立，不能混用。目录为 `glm-5.3`（文本输入）与
+`glm-5.3-flash`（文本 + 图片），上下文 1,000,000 token，答案额度预设 16,384（服务端上限 128K）。
+套餐按积分计费，目录不声明单价。
+
+GLM-5.3 的思考不可关闭，`thinking.type` 只接受 `enabled`，`disabled` 会被拒绝。因此始终发送
+`enabled`；`--thinking off` / minimal / low 映射 `reasoning_effort=low`，medium / high / xhigh
+映射 high，max 映射 max。工具轮次回传未修改的 `reasoning_content`。
+依据 [GLM-5.3](https://docs.z.ai/guides/llm/glm-5.3.md)、
+[思考模式](https://docs.z.ai/guides/capabilities/thinking-mode.md)、
+[Coding Plan 快速开始](https://docs.z.ai/devpack/quick-start.md)，核对于 2026-10-22。
+
+未核实：认证头（按 Bearer 处理）、`tool_stream`、思考 token 是否计入 `max_tokens`
+（按计入处理，只会提高请求上限）。
+
+使用限制：套餐仅限官方支持的工具内使用（见 z.ai 使用政策）。本包不代表 rpi 在该列表内，
+使用前请自行向 z.ai 确认。
 
 ## 离线验证
 
