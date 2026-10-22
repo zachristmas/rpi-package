@@ -43,14 +43,15 @@ fn load() -> (rpi_extensions::ExtensionSession, Vec<Arc<dyn Provider>>) {
 async fn one_library_declares_all_provider_catalogs_and_auth_policies() {
     let (session, providers) = load();
     let snapshot = session.snapshot().expect("bundle loaded");
-    assert_eq!(providers.len(), 5);
-    assert_eq!(snapshot.providers().len(), 5);
+    assert_eq!(providers.len(), 6);
+    assert_eq!(snapshot.providers().len(), 6);
     for (id, env, auth) in [
         ("deepseek", "DEEPSEEK_API_KEY", true),
         ("openrouter", "OPENROUTER_API_KEY", true),
         ("llama-cpp", "LLAMA_CPP_API_KEY", false),
         ("proxy", "PROXY_API_KEY", false),
         ("zai", "ZAI_API_KEY", true),
+        ("zai-coding-cn", "ZAI_CODING_CN_API_KEY", true),
     ] {
         let manifest = snapshot
             .provider_manifest(id)
@@ -77,7 +78,7 @@ async fn simultaneous_requests_use_each_providers_own_factory_and_credentials() 
     let base = format!("http://{}/v1", listener.local_addr().unwrap());
     let server = tokio::spawn(async move {
         let mut seen = vec![];
-        for _ in 0..5 {
+        for _ in 0..6 {
             let (mut socket, _) = listener.accept().await.unwrap();
             let mut request = vec![];
             let end = loop {
@@ -106,6 +107,10 @@ async fn simultaneous_requests_use_each_providers_own_factory_and_credentials() 
                 "openrouter/auto" => "openrouter",
                 "local" => "llama-cpp",
                 "default" => "proxy",
+                // Both platforms share this model ID; the fixture header tells them apart.
+                "glm-5.3" if headers.contains("x-provider-fixture: zai-coding-cn") => {
+                    "zai-coding-cn"
+                }
                 "glm-5.3" => "zai",
                 other => panic!("unexpected model {other}"),
             };
@@ -123,7 +128,7 @@ async fn simultaneous_requests_use_each_providers_own_factory_and_credentials() 
             if id == "deepseek" {
                 assert_eq!(body["thinking"]["type"], "disabled");
             }
-            if id == "zai" {
+            if id == "zai" || id == "zai-coding-cn" {
                 // GLM-5.3 cannot disable thinking; `off` falls back to low effort.
                 assert_eq!(body["thinking"]["type"], "enabled");
                 assert_eq!(body["reasoning_effort"], "low");
