@@ -45,7 +45,9 @@ pub struct ErrorObject {
 pub struct Notification {
     pub jsonrpc: String,
     pub method: String,
-    #[serde(default)]
+    // Omit rather than send `null`: JSON-RPC only allows an object or array, and
+    // strict servers (Cloudflare's MCP servers) answer 400 to `"params": null`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub params: Option<Value>,
 }
 
@@ -150,5 +152,29 @@ mod tests {
         }));
         assert!(text.contains("ok"));
         assert!(text.contains("value"));
+    }
+}
+
+#[cfg(test)]
+mod notification_tests {
+    use super::*;
+
+    #[test]
+    fn a_notification_without_params_omits_the_field() {
+        let initialized =
+            serde_json::to_value(crate::connection::initialized_notification()).unwrap();
+        assert_eq!(
+            initialized,
+            serde_json::json!({"jsonrpc": "2.0", "method": "notifications/initialized"})
+        );
+        let with = Notification {
+            jsonrpc: "2.0".into(),
+            method: "notifications/cancelled".into(),
+            params: Some(serde_json::json!({"requestId": 1})),
+        };
+        assert_eq!(
+            serde_json::to_value(with).unwrap()["params"]["requestId"],
+            1
+        );
     }
 }
