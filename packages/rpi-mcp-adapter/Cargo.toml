@@ -15,7 +15,9 @@ categories = ["development-tools"]
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-rpi-plugin-sdk = { version = "0.3.16", features = ["process"] }
+# Pinned: 0.3.24 made StbString accessors unsafe, which this crate predates, and
+# `rpi install --path` builds in a temp dir without the workspace lockfile.
+rpi-plugin-sdk = { version = "=0.3.20", features = ["process"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
 reqwest = { workspace = true }
