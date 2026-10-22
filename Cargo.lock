@@ -2499,6 +2499,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "rpi-herdr"
+version = "0.1.0"
+dependencies = [
+ "rpi-plugin-sdk 0.3.20",
+]
+
+[[package]]
 name = "rpi-im-message"
 version = "0.1.12"
 dependencies = [

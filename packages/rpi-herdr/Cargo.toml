@@ -1,0 +1,16 @@
+[package]
+name = "rpi-herdr"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "Reports the rpi agent's state to Herdr so a pane running rpi shows up as an agent"
+readme = "README.md"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+rpi-plugin-sdk = "0.3.20"
