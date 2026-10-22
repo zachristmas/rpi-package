@@ -4,7 +4,7 @@
 
 ### Added
 
-- `zai` provider for the Z.ai GLM Coding Plan (`glm-5.3`, `glm-5.3-flash`), key from `ZAI_API_KEY`.
+- `zai` provider for the Z.ai GLM Coding Plan (all seven Coding Plan models, catalog and request shape follow Pi), key from `ZAI_API_KEY`.
 
 ## [0.1.3](https://github.com/pi-rust/rpi-package/compare/rpi-providers-v0.1.2...rpi-providers-v0.1.3) - 2026-10-22
 

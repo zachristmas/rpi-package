@@ -10,7 +10,7 @@
 | `openrouter` | `openrouter/auto` | 必须认证，`OPENROUTER_API_KEY` |
 | `llama-cpp` | `local` | 可匿名，可选 `LLAMA_CPP_API_KEY` |
 | `proxy` | `default` | 可匿名，可选 `PROXY_API_KEY` |
-| `zai` | `glm-5.3`、`glm-5.3-flash` | 必须认证，`ZAI_API_KEY` |
+| `zai` | `glm-5.3` 等 7 个 Coding Plan 模型 | 必须认证，`ZAI_API_KEY` |
 
 包名 `rpi-providers` 与 provider ID 不同。一次安装注册四份目录，认证仍按 provider ID
 隔离，不能借用 `OPENAI_API_KEY` 或其他供应商的 key。已有 models.json、auth.json 的
@@ -120,19 +120,30 @@ medium / high / xhigh 映射 high，max 映射 max。遵循宿主 options 约定
 ## Z.ai GLM Coding Plan 行为
 
 端点为 `https://api.z.ai/api/coding/paas/v4`（Chat Completions）。通用 API 使用 `/api/paas/v4`，
-不消耗套餐额度；套餐 key 与通用 API key 相互独立，不能混用。目录为 `glm-5.3`（文本输入）与
-`glm-5.3-flash`（文本 + 图片），上下文 1,000,000 token，答案额度预设 16,384（服务端上限 128K）。
-套餐按积分计费，目录不声明单价。
+不消耗套餐额度；套餐 key 与通用 API key 相互独立，不能混用。目录与请求形态参照 Pi
+（badlogic/pi-mono 的 `zai` provider）：取 models.dev `zai-coding-plan` 中支持工具调用的全部模型，
+核对于 2026-10-22。套餐按积分计费，目录不声明单价。
 
-GLM-5.3 的思考不可关闭，`thinking.type` 只接受 `enabled`，`disabled` 会被拒绝。因此始终发送
-`enabled`；`--thinking off` / minimal / low 映射 `reasoning_effort=low`，medium / high / xhigh
-映射 high，max 映射 max。工具轮次回传未修改的 `reasoning_content`。
-依据 [GLM-5.3](https://docs.z.ai/guides/llm/glm-5.3.md)、
+| 模型 | 上下文 | 图片 | 思考 |
+| --- | --- | --- | --- |
+| `glm-5.3`（默认） | 1M | 否 | 不可关闭，effort low / high / max |
+| `glm-5.3-highspeed` | 1M | 否 | 同上 |
+| `glm-5.3-flash` | 1M | 是 | 同上 |
+| `glm-5.2`、`glm-5.2-highspeed`（已弃用） | 1M | 否 | 可关闭，effort high / max |
+| `glm-5-turbo`（已弃用） | 200K | 否 | 可关闭，无 effort |
+| `glm-4.7`（已弃用） | 204.8K | 否 | 可关闭，无 effort |
+
+答案额度预设 16,384（服务端上限 131,072）。已弃用模型仍保留，因为套餐仍会路由。
+请求始终发送 `thinking`（`enabled` 且 `clear_thinking=false`，保留思考；可关闭的模型在
+`--thinking off` 时发送 `disabled`）。`reasoning_effort` 按模型接受的值取不低于请求的最小值：
+off / minimal / low 对应 low，medium / high / xhigh 对应 high，max 对应 max；GLM-5.2 没有 low，
+所以向上取 high。有工具时发送 `tool_stream: true`，与 Pi 一致。工具轮次回传未修改的
+`reasoning_content`。依据 [GLM-5.3](https://docs.z.ai/guides/llm/glm-5.3.md)、
 [思考模式](https://docs.z.ai/guides/capabilities/thinking-mode.md)、
-[Coding Plan 快速开始](https://docs.z.ai/devpack/quick-start.md)，核对于 2026-10-22。
+[Coding Plan 快速开始](https://docs.z.ai/devpack/quick-start.md)。
 
-未核实：认证头（按 Bearer 处理）、`tool_stream`、思考 token 是否计入 `max_tokens`
-（按计入处理，只会提高请求上限）。
+未用真实 key 验证：认证头（按 Bearer 处理）、`tool_stream` 的流式工具参数解析、思考 token 是否计入
+`max_tokens`（按计入处理，只会提高请求上限）。
 
 使用限制：套餐仅限官方支持的工具内使用（见 z.ai 使用政策）。本包不代表 rpi 在该列表内，
 使用前请自行向 z.ai 确认。
